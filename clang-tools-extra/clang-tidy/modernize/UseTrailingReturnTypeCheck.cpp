@@ -372,9 +372,9 @@ bool UseTrailingReturnTypeCheck::keepSpecifiers(
 }
 
 void UseTrailingReturnTypeCheck::registerMatchers(MatchFinder *Finder) {
-  auto F = functionDecl(unless(anyOf(hasTrailingReturn(), returns(voidType()),
-                                     returns(autoType()), cxxConversionDecl(),
-                                     cxxMethodDecl(isImplicit()))))
+  auto F = functionDecl(
+               unless(anyOf(hasTrailingReturn(), returns(voidType()),
+                            cxxConversionDecl(), cxxMethodDecl(isImplicit()))))
                .bind("Func");
 
   Finder->addMatcher(F, this);
@@ -395,6 +395,11 @@ void UseTrailingReturnTypeCheck::check(const MatchFinder::MatchResult &Result) {
   assert(F && "Matcher is expected to find only FunctionDecls");
 
   if (F->getLocation().isInvalid())
+    return;
+
+  // Skip functions which return just 'auto'.
+  if (F->getDeclaredReturnType()->getAs<AutoType>() != nullptr &&
+      !hasAnyNestedLocalQualifiers(F->getDeclaredReturnType()))
     return;
 
   // TODO: implement those

@@ -215,8 +215,15 @@ struct A e13();
 // CHECK-FIXES: {{^}}auto e13() -> struct A;{{$}}
 
 //
-// decltype (unsupported if top level expression)
+// deduced return types
 //
+
+const auto ded1();
+// CHECK-MESSAGES: :[[@LINE-1]]:12: warning: use a trailing return type for this function [modernize-use-trailing-return-type]
+// CHECK-FIXES: {{^}}auto ded1() -> const auto;{{$}}
+const auto& ded2();
+// CHECK-MESSAGES: :[[@LINE-1]]:13: warning: use a trailing return type for this function [modernize-use-trailing-return-type]
+// CHECK-FIXES: {{^}}auto ded2() -> const auto&;{{$}}
 
 decltype(1 + 2) dec1() { return 1 + 2; }
 // CHECK-MESSAGES: :[[@LINE-1]]:17: warning: use a trailing return type for this function [modernize-use-trailing-return-type]
