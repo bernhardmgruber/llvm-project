@@ -317,7 +317,7 @@ SourceRange UseTrailingReturnTypeCheck::findReturnTypeAndCVSourceRange(
   return ReturnTypeRange;
 }
 
-bool UseTrailingReturnTypeCheck::keepSpecifiers(
+void UseTrailingReturnTypeCheck::keepSpecifiers(
     std::string &ReturnType, std::string &Auto, SourceRange ReturnTypeCVRange,
     const FunctionDecl &F, const FriendDecl *Fr, const ASTContext &Ctx,
     const SourceManager &SM, const LangOptions &LangOpts) {
@@ -327,14 +327,14 @@ bool UseTrailingReturnTypeCheck::keepSpecifiers(
   if (!F.isConstexpr() && !F.isInlineSpecified() &&
       F.getStorageClass() != SC_Extern && F.getStorageClass() != SC_Static &&
       !Fr && !(M && M->isVirtualAsWritten()))
-    return true;
+    return;
 
   // Tokenize return type. If it contains macros which contain a mix of
   // qualifiers, specifiers and types, give up.
   llvm::Optional<SmallVector<ClassifiedToken, 8>> MaybeTokens =
       classifyTokensBeforeFunctionName(F, Ctx, SM, LangOpts);
   if (!MaybeTokens)
-    return false;
+    return;
 
   // Find specifiers, remove them from the return type, add them to 'auto'.
   unsigned int ReturnTypeBeginOffset =
@@ -368,7 +368,7 @@ bool UseTrailingReturnTypeCheck::keepSpecifiers(
     DeletedChars += TLengthWithWS;
   }
 
-  return true;
+  return;
 }
 
 void UseTrailingReturnTypeCheck::registerMatchers(MatchFinder *Finder) {
