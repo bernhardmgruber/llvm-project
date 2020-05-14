@@ -1060,6 +1060,9 @@ unsigned ContinuationIndenter::getNewLineColumn(const LineState &State) {
       (!Style.IndentWrappedFunctionNames &&
        NextNonComment->isOneOf(tok::kw_operator, TT_FunctionDeclarationName)))
     return std::max(State.Stack.back().LastSpace, State.Stack.back().Indent);
+  if (NextNonComment && NextNonComment->is(TT_TemplateCloser) &&
+      State.Stack.size() > 1) // TODO(bgruber)
+    return State.Stack[State.Stack.size() - 2].Indent;
   if (NextNonComment->is(TT_SelectorName)) {
     if (!State.Stack.back().ObjCSelectorNameFound) {
       unsigned MinIndent = State.Stack.back().Indent;

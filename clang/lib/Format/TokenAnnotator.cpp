@@ -3488,6 +3488,9 @@ bool TokenAnnotator::mustBreakBefore(const AnnotatedLine &Line,
       Right.Previous->MatchingParen->NestingLevel == 0 &&
       Style.AlwaysBreakTemplateDeclarations == FormatStyle::BTDS_Yes)
     return true;
+  if (Left.is(TT_TemplateOpener) ||
+      Right.is(TT_TemplateCloser)) // TODO(bgruber)
+    return true;
   if (Right.is(TT_CtorInitializerComma) &&
       Style.BreakConstructorInitializers == FormatStyle::BCIS_BeforeComma &&
       !Style.ConstructorInitializerAllOnOneLineOrOnePerLine)
