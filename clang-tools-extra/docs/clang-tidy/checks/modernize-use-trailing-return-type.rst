@@ -11,24 +11,21 @@ and inserted after the function parameter list (and qualifiers).
 Example
 -------
 
-.. code-block:: c++
+======================================== ===============================================
+Before                                   After
+======================================== ===============================================
+.. code-block:: c++                      .. code-block:: c++
 
-  int f1();
-  inline int f2(int arg) noexcept;
-  virtual float f3() const && = delete;
-
-transforms to:
-
-.. code-block:: c++
-
-  auto f1() -> int;
-  inline auto f2(int arg) -> int noexcept;
-  virtual auto f3() const && -> float = delete;
+  int f1();                                auto f1() -> int;
+  inline int f2(int arg) noexcept;         inline auto f2(int arg) -> int noexcept;
+  virtual float f3() const && = delete;    virtual auto f3() const && -> float = delete;
+======================================== ===============================================
 
 Known Limitations
 -----------------
 
 The following categories of return types cannot be rewritten currently:
+
 * function pointers
 * member function pointers
 * member pointers
@@ -39,30 +36,22 @@ Preventing such errors requires a full lookup of all unqualified names present i
 This location includes e.g. function parameter names and members of the enclosing class (including all inherited classes).
 Such a lookup is currently not implemented.
 
-Given the following piece of code
+For example, a careless rewrite would produce the following output:
 
-.. code-block:: c++
+======================================== ===============================================
+Before                                   After
+======================================== ===============================================
+.. code-block:: c++                      .. code-block:: c++
 
-  struct Object { long long value; };
-  Object f(unsigned Object) { return {Object * 2}; }
-  class CC {
-    int Object;
-    struct Object m();
-  };
-  Object CC::m() { return {0}; }
+  struct S { long long value; };           struct S { long long value; };
+  S f(unsigned S) { return {S * 2}; }      auto f(unsigned S) -> S { return {S * 2}; } // error
+  class CC {                               class CC {
+    int S;                                   int S;
+    struct S m();                            auto m() -> struct S;
+  };                                       };
+  S CC::m() { return {0}; }                auto CC::m() -> S { return {0}; } // error
+======================================== ===============================================
 
-a careless rewrite would produce the following output:
-
-.. code-block:: c++
-
-  struct Object { long long value; };
-  auto f(unsigned Object) -> Object { return {Object * 2}; } // error
-  class CC {
-    int Object;
-    auto m() -> struct Object;
-  };
-  auto CC::m() -> Object { return {0}; } // error
-
-This code fails to compile because the Object in the context of f refers to the equally named function parameter.
-Similarly, the Object in the context of m refers to the equally named class member.
-The check can currently only detect a clash with a function parameter name.
+This code fails to compile because the S in the context of f refers to the equally named function parameter.
+Similarly, the S in the context of m refers to the equally named class member.
+The check can currently only detect and avoid a clash with a function parameter name.
