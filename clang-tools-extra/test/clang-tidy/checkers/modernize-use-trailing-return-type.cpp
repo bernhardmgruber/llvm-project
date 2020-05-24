@@ -583,6 +583,16 @@ const std::floating_point auto* volatile con4();
 // CHECK-MESSAGES: :[[@LINE-1]]:42: warning: use a trailing return type for this function [modernize-use-trailing-return-type]
 // CHECK-FIXES: {{^}}auto con4() -> const std::floating_point auto* volatile;{{{$}}
 
+template <typename T>
+int req1(T t) requires std::floating_point<T>;
+// CHECK-MESSAGES: :[[@LINE-1]]:5: warning: use a trailing return type for this function [modernize-use-trailing-return-type]
+// CHECK-FIXES: {{^}}auto req1(T t) -> int requires std::floating_point<T>;{{{$}}
+
+template <typename T>
+T req2(T t) requires requires { t + t; };
+  // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: use a trailing return type for this function [modernize-use-trailing-return-type]
+  // CHECK-FIXES: {{^}}auto req2(T t) -> T requires requires { t + t; };{{{$}}
+
 #endif
 
 //
