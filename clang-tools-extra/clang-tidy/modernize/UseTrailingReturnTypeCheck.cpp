@@ -261,8 +261,8 @@ static bool hasAnyNestedLocalQualifiers(QualType Type) {
 }
 
 SourceRange UseTrailingReturnTypeCheck::findReturnTypeAndCVSourceRange(
-    const FunctionDecl &F, const ASTContext &Ctx, const SourceManager &SM,
-    const LangOptions &LangOpts) {
+    const FunctionDecl &F, const TypeLoc &ReturnLoc, const ASTContext &Ctx,
+    const SourceManager &SM, const LangOptions &LangOpts) {
 
   // We start with the range of the return type and expand to neighboring
   // qualifiers (const, volatile and restrict).
@@ -272,6 +272,33 @@ SourceRange UseTrailingReturnTypeCheck::findReturnTypeAndCVSourceRange(
     // unknown.
     diag(F.getLocation(), Message);
     return {};
+  }
+
+  // If the return type is a constrained 'auto' or 'decltype(auto)', we need to
+  // include the tokens after the concept. Unfortunately, the source range of an
+  // AutoTypeLoc, if it is constrained, does not include the 'auto' or
+  // 'decltype(auto)'.
+  if (auto ATL = ReturnLoc.getAs<AutoTypeLoc>()) {
+    if (ATL.isConstrained()) {
+      SourceLocation EndConcept =
+          expandIfMacroId(ATL.getSourceRange().getEnd(), SM);
+      SourceLocation BeginNameF = expandIfMacroId(F.getLocation(), SM);
+
+      // Extend the ReturnTypeRange until the last token before the function
+      // name.
+      std::pair<FileID, unsigned> Loc = SM.getDecomposedLoc(EndConcept);
+      StringRef File = SM.getBufferData(Loc.first);
+      const char *TokenBegin = File.data() + Loc.second;
+      Lexer Lexer(SM.getLocForStartOfFile(Loc.first), LangOpts, File.begin(),
+                  TokenBegin, File.end());
+      Token T;
+      SourceLocation LastTLoc = EndConcept;
+      while (!Lexer.LexFromRawLexer(T) &&
+             SM.isBeforeInTranslationUnit(T.getLocation(), BeginNameF)) {
+        LastTLoc = T.getLocation();
+      }
+      ReturnTypeRange.setEnd(LastTLoc);
+    }
   }
 
   // If the return type has no local qualifiers, it's source range is accurate.
@@ -398,7 +425,8 @@ void UseTrailingReturnTypeCheck::check(const MatchFinder::MatchResult &Result) {
     return;
 
   // Skip functions which return just 'auto'.
-  if (F->getDeclaredReturnType()->getAs<AutoType>() != nullptr &&
+  const auto *AT = F->getDeclaredReturnType()->getAs<AutoType>();
+  if (AT != nullptr && !AT->isConstrained() &&
       !hasAnyNestedLocalQualifiers(F->getDeclaredReturnType()))
     return;
 
@@ -440,7 +468,7 @@ void UseTrailingReturnTypeCheck::check(const MatchFinder::MatchResult &Result) {
   // discards user formatting and order of const, volatile, type, whitespace,
   // space before & ... .
   SourceRange ReturnTypeCVRange =
-      findReturnTypeAndCVSourceRange(*F, Ctx, SM, LangOpts);
+      findReturnTypeAndCVSourceRange(*F, FTL.getReturnLoc(), Ctx, SM, LangOpts);
   if (ReturnTypeCVRange.isInvalid())
     return;
 

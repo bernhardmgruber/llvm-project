@@ -50,6 +50,7 @@ private:
                                    const SourceManager &SM,
                                    const LangOptions &LangOpts);
   SourceRange findReturnTypeAndCVSourceRange(const FunctionDecl &F,
+                                             const TypeLoc &ReturnLoc,
                                              const ASTContext &Ctx,
                                              const SourceManager &SM,
                                              const LangOptions &LangOpts);
