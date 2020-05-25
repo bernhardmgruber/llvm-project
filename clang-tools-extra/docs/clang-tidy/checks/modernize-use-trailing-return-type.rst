@@ -11,15 +11,19 @@ and inserted after the function parameter list (and qualifiers).
 Example
 -------
 
-======================================== ===============================================
-Before                                   After
-======================================== ===============================================
-.. code-block:: c++                      .. code-block:: c++
+.. code-block:: c++
 
-  int f1();                                auto f1() -> int;
-  inline int f2(int arg) noexcept;         inline auto f2(int arg) -> int noexcept;
-  virtual float f3() const && = delete;    virtual auto f3() const && -> float = delete;
-======================================== ===============================================
+  int f1();
+  inline int f2(int arg) noexcept;
+  virtual float f3() const && = delete;
+
+transforms to:
+
+.. code-block:: c++
+
+  auto f1() -> int;
+  inline auto f2(int arg) -> int noexcept;
+  virtual auto f3() const && -> float = delete;
 
 Known Limitations
 -----------------
@@ -35,21 +39,29 @@ Preventing such errors requires a full lookup of all unqualified names present i
 This location includes e.g. function parameter names and members of the enclosing class (including all inherited classes).
 Such a lookup is currently not implemented.
 
-For example, a careless rewrite would produce the following output:
+Given the following piece of code
 
-======================================== ===============================================
-Before                                   After
-======================================== ===============================================
-.. code-block:: c++                      .. code-block:: c++
+.. code-block:: c++
 
-  struct S { long long value; };           struct S { long long value; };
-  S f(unsigned S) { return {S * 2}; }      auto f(unsigned S) -> S { return {S * 2}; } // error
-  class CC {                               class CC {
-    int S;                                   int S;
-    struct S m();                            auto m() -> struct S;
-  };                                       };
-  S CC::m() { return {0}; }                auto CC::m() -> S { return {0}; } // error
-======================================== ===============================================
+  struct S { long long value; };
+  S f(unsigned S) { return {S * 2}; }
+  class CC {
+    int S;
+    struct S m();
+  };
+  S CC::m() { return {0}; }
+
+a careless rewrite would produce the following output:
+
+.. code-block:: c++
+
+  struct S { long long value; };
+  auto f(unsigned S) -> S { return {S * 2}; } // error
+  class CC {
+    int S;
+    auto m() -> struct S;
+  };
+  auto CC::m() -> S { return {0}; } // error
 
 This code fails to compile because the S in the context of f refers to the equally named function parameter.
 Similarly, the S in the context of m refers to the equally named class member.
