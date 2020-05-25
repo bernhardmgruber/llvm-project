@@ -396,8 +396,6 @@ void UseTrailingReturnTypeCheck::keepSpecifiers(
     ReturnType.erase(TOffsetInRT, TLengthWithWS);
     DeletedChars += TLengthWithWS;
   }
-
-  return;
 }
 
 void UseTrailingReturnTypeCheck::registerMatchers(MatchFinder *Finder) {
