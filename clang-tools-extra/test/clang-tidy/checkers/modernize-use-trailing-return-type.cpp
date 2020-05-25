@@ -11,6 +11,8 @@ namespace std {
 
     class string;
 
+    class ostream;
+
     template <typename T>
     auto declval() -> T;
 }
@@ -597,6 +599,15 @@ T req2(T t) requires requires { t + t; };
   // CHECK-FIXES: {{^}}auto req2(T t) -> T requires requires { t + t; };{{$}}
 
 #endif
+
+//
+// bug 44206, no rewrite should happen due to collision with parameter name
+//
+
+using std::ostream;
+ostream& operator<<(ostream& ostream, int i);
+// CHECK-MESSAGES: :[[@LINE-1]]:10: warning: use a trailing return type for this function [modernize-use-trailing-return-type]
+// CHECK-FIXES: {{^}}ostream& operator<<(ostream& ostream, int i);{{$}}
 
 //
 // Samples which do not trigger the check
