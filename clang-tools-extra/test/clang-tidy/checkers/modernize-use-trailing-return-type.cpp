@@ -232,13 +232,11 @@ decltype(auto) ded3();
 
 decltype(1 + 2) dec1() { return 1 + 2; }
 // CHECK-MESSAGES: :[[@LINE-1]]:17: warning: use a trailing return type for this function [modernize-use-trailing-return-type]
-// TODO: source range of DecltypeTypeLoc not yet implemented
-// _HECK-FIXES: {{^}}auto dec1() -> decltype(1 + 2) { return 1 + 2; }{{$}}
+// CHECK-FIXES: {{^}}auto dec1() -> decltype(1 + 2) { return 1 + 2; }{{$}}
 template <typename F, typename T>
 decltype(std::declval<F>(std::declval<T>)) dec2(F f, T t) { return f(t); }
 // CHECK-MESSAGES: :[[@LINE-1]]:44: warning: use a trailing return type for this function [modernize-use-trailing-return-type]
-// TODO: source range of DecltypeTypeLoc not yet implemented
-// _HECK-FIXES: {{^}}auto dec2(F f, T t) -> decltype(std::declval<F>(std::declval<T>)) { return f(t); }{{$}}
+// CHECK-FIXES: {{^}}auto dec2(F f, T t) -> decltype(std::declval<F>(std::declval<T>)) { return f(t); }{{$}}
 template <typename T>
 typename decltype(std::declval<T>())::value_type dec3();
 // CHECK-MESSAGES: :[[@LINE-1]]:50: warning: use a trailing return type for this function [modernize-use-trailing-return-type]
