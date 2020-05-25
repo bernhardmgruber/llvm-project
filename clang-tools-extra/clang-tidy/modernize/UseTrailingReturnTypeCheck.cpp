@@ -277,22 +277,23 @@ SourceRange UseTrailingReturnTypeCheck::findReturnTypeAndCVSourceRange(
   // If the return type is a constrained 'auto' or 'decltype(auto)', we need to
   // include the tokens after the concept. Unfortunately, the source range of an
   // AutoTypeLoc, if it is constrained, does not include the 'auto' or
-  // 'decltype(auto)'.
+  // 'decltype(auto)'. If the return type is a plain 'decltype(auto)', the
+  // source range only contains the first 'decltype' token.
   if (auto ATL = ReturnLoc.getAs<AutoTypeLoc>()) {
-    if (ATL.isConstrained()) {
-      SourceLocation EndConcept =
-          expandIfMacroId(ATL.getSourceRange().getEnd(), SM);
+    if (ATL.isConstrained() ||
+        ATL.getAutoKeyword() == AutoTypeKeyword::DecltypeAuto) {
+      SourceLocation End = expandIfMacroId(ATL.getSourceRange().getEnd(), SM);
       SourceLocation BeginNameF = expandIfMacroId(F.getLocation(), SM);
 
       // Extend the ReturnTypeRange until the last token before the function
       // name.
-      std::pair<FileID, unsigned> Loc = SM.getDecomposedLoc(EndConcept);
+      std::pair<FileID, unsigned> Loc = SM.getDecomposedLoc(End);
       StringRef File = SM.getBufferData(Loc.first);
       const char *TokenBegin = File.data() + Loc.second;
       Lexer Lexer(SM.getLocForStartOfFile(Loc.first), LangOpts, File.begin(),
                   TokenBegin, File.end());
       Token T;
-      SourceLocation LastTLoc = EndConcept;
+      SourceLocation LastTLoc = End;
       while (!Lexer.LexFromRawLexer(T) &&
              SM.isBeforeInTranslationUnit(T.getLocation(), BeginNameF)) {
         LastTLoc = T.getLocation();
@@ -427,14 +428,14 @@ void UseTrailingReturnTypeCheck::check(const MatchFinder::MatchResult &Result) {
   // Skip functions which return just 'auto'.
   const auto *AT = F->getDeclaredReturnType()->getAs<AutoType>();
   if (AT != nullptr && !AT->isConstrained() &&
+      AT->getKeyword() == AutoTypeKeyword::Auto &&
       !hasAnyNestedLocalQualifiers(F->getDeclaredReturnType()))
     return;
 
   // TODO: implement those
   if (F->getDeclaredReturnType()->isFunctionPointerType() ||
       F->getDeclaredReturnType()->isMemberFunctionPointerType() ||
-      F->getDeclaredReturnType()->isMemberPointerType() ||
-      F->getDeclaredReturnType()->getAs<DecltypeType>() != nullptr) {
+      F->getDeclaredReturnType()->isMemberPointerType()) {
     diag(F->getLocation(), Message);
     return;
   }

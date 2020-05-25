@@ -29,7 +29,6 @@ The following categories of return types cannot be rewritten currently:
 * function pointers
 * member function pointers
 * member pointers
-* decltype, when it is the top level expression
 
 Unqualified names in the return type might erroneously refer to different entities after the rewrite.
 Preventing such errors requires a full lookup of all unqualified names present in the return type in the scope of the trailing return type location.

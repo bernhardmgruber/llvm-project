@@ -225,6 +225,11 @@ const auto& ded2();
 // CHECK-MESSAGES: :[[@LINE-1]]:13: warning: use a trailing return type for this function [modernize-use-trailing-return-type]
 // CHECK-FIXES: {{^}}auto ded2() -> const auto&;{{$}}
 
+decltype(auto) ded3();
+// CHECK-MESSAGES: :[[@LINE-1]]:16: warning: use a trailing return type for this function [modernize-use-trailing-return-type]
+// CHECK-FIXES: {{^}}auto ded3() -> decltype(auto);{{$}}
+
+
 decltype(1 + 2) dec1() { return 1 + 2; }
 // CHECK-MESSAGES: :[[@LINE-1]]:17: warning: use a trailing return type for this function [modernize-use-trailing-return-type]
 // TODO: source range of DecltypeTypeLoc not yet implemented
@@ -607,7 +612,6 @@ auto f(int arg1, int arg2, int arg3, ...) -> int;
 template <typename T> auto f(T t) -> int;
 
 auto ff();
-decltype(auto) fff();
 
 void c();
 void c(int arg);
