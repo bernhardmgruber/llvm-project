@@ -1,4 +1,4 @@
-// RUN: %check_clang_tidy -std=c++14-or-later %s modernize-use-trailing-return-type %t -- -- -fdeclspec -fexceptions
+// RUN: %check_clang_tidy -std=c++14-or-later %s modernize-use-trailing-return-type %t -- -- -fdeclspec -fexceptions -DCOMMAND_LINE_INT=int
 // FIXME: Fix the checker to work in C++20 mode, it is performing a
 // use-of-uninitialized-value.
 
@@ -475,6 +475,13 @@ CONST_CAT int& h19();
 CONST_F_MACRO int& h19();
 // CHECK-MESSAGES: :[[@LINE-1]]:20: warning: use a trailing return type for this function [modernize-use-trailing-return-type]
 // CHECK-FIXES: {{^}}auto h19() -> CONST_F_MACRO int&;{{$}}
+// Macro COMMAND_LINE_INT is defined on the command line via: -DCOMMAND_LINE_INT=int
+const COMMAND_LINE_INT& h20();
+// CHECK-MESSAGES: :[[@LINE-1]]:25: warning: use a trailing return type for this function [modernize-use-trailing-return-type]
+// CHECK-FIXES: {{^}}auto h20() -> const COMMAND_LINE_INT&;{{$}}
+decltype(COMMAND_LINE_INT{}) h21();
+// CHECK-MESSAGES: :[[@LINE-1]]:30: warning: use a trailing return type for this function [modernize-use-trailing-return-type]
+// CHECK-FIXES: {{^}}auto h21() -> decltype(COMMAND_LINE_INT{});{{$}}
 
 //
 // Name collisions
