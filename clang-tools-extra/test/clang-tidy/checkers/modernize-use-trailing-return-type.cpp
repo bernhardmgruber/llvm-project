@@ -1,6 +1,4 @@
 // RUN: %check_clang_tidy -std=c++14-or-later %s modernize-use-trailing-return-type %t -- -- -fdeclspec -fexceptions -DCOMMAND_LINE_INT=int
-// FIXME: Fix the checker to work in C++20 mode, it is performing a
-// use-of-uninitialized-value.
 
 namespace std {
     template <typename T>
