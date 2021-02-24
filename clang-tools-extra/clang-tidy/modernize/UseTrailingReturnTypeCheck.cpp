@@ -8,10 +8,13 @@
 //===----------------------------------------------------------------------===//
 
 #include "UseTrailingReturnTypeCheck.h"
+#include "clang/AST/ASTConsumer.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/Lex/Preprocessor.h"
+#include "clang/Sema/Lookup.h"
+#include "clang/Sema/Scope.h"
 #include "clang/Tooling/FixIt.h"
 #include "llvm/ADT/StringExtras.h"
 
@@ -25,20 +28,28 @@ namespace modernize {
 namespace {
 struct UnqualNameVisitor : public RecursiveASTVisitor<UnqualNameVisitor> {
 public:
-  UnqualNameVisitor(const FunctionDecl &F) : F(F) {}
+  UnqualNameVisitor(const FunctionDecl &F, Sema &Sema, Scope &Scope)
+      : F(F), Sema(Sema), Scope(Scope) {}
 
   bool Collision = false;
 
   bool shouldWalkTypesOfTypeLocs() const { return false; }
 
-  bool VisitUnqualName(StringRef UnqualName) {
+  bool VisitUnqualName(DeclarationName DeclName) {
+
+    clang::LookupResult R(Sema, DeclName, SourceLocation{},
+                          Sema::LookupNameKind::LookupOrdinaryName);
+    Sema.LookupName(R, &Scope);
+    R.dump();
+
     // Check for collisions with function arguments.
-    for (ParmVarDecl *Param : F.parameters())
-      if (const IdentifierInfo *Ident = Param->getIdentifier())
-        if (Ident->getName() == UnqualName) {
-          Collision = true;
-          return true;
-        }
+
+    // for (ParmVarDecl *Param : F.parameters())
+    //  if (const IdentifierInfo *Ident = Param->getIdentifier())
+    //    if (Ident->getName() == UnqualName) {
+    //      Collision = true;
+    //      return true;
+    //    }
     return false;
   }
 
@@ -49,28 +60,29 @@ public:
     if (!Elaborated) {
       switch (TL.getTypeLocClass()) {
       case TypeLoc::Record:
-        if (VisitUnqualName(
-                TL.getAs<RecordTypeLoc>().getTypePtr()->getDecl()->getName()))
+        if (VisitUnqualName(TL.getAs<RecordTypeLoc>()
+                                .getTypePtr()
+                                ->getDecl()
+                                ->getDeclName()))
           return false;
         break;
       case TypeLoc::Enum:
         if (VisitUnqualName(
-                TL.getAs<EnumTypeLoc>().getTypePtr()->getDecl()->getName()))
+                TL.getAs<EnumTypeLoc>().getTypePtr()->getDecl()->getDeclName()))
           return false;
         break;
-      case TypeLoc::TemplateSpecialization:
-        if (VisitUnqualName(TL.getAs<TemplateSpecializationTypeLoc>()
-                                .getTypePtr()
-                                ->getTemplateName()
-                                .getAsTemplateDecl()
-                                ->getName()))
-          return false;
-        break;
-      case TypeLoc::Typedef:
-        if (VisitUnqualName(
-                TL.getAs<TypedefTypeLoc>().getTypePtr()->getDecl()->getName()))
-          return false;
-        break;
+      // case TypeLoc::TemplateSpecialization:
+      //  if (VisitUnqualName(TL.getAs<TemplateSpecializationTypeLoc>()
+      //                          .getTypePtr()
+      //                          ->getTemplateName()
+      //                          .getAsTemplateDecl()))
+      //    return false;
+      //  break;
+      // case TypeLoc::Typedef:
+      //  if (VisitUnqualName(
+      //          TL.getAs<TypedefTypeLoc>().getTypePtr()->getDecl()))
+      //    return false;
+      //  break;
       default:
         break;
       }
@@ -96,12 +108,15 @@ public:
 
   bool VisitDeclRefExpr(DeclRefExpr *S) {
     DeclarationName Name = S->getNameInfo().getName();
-    return S->getQualifierLoc() || !Name.isIdentifier() ||
-           !VisitUnqualName(Name.getAsIdentifierInfo()->getName());
+    return S->getQualifierLoc() ||
+           !Name.isIdentifier(); // ||
+                                 // !VisitUnqualName(Name.getAsIdentifierInfo()->getName());
   }
 
 private:
   const FunctionDecl &F;
+  Sema &Sema;
+  Scope &Scope;
 };
 } // namespace
 
@@ -477,15 +492,22 @@ void UseTrailingReturnTypeCheck::check(const MatchFinder::MatchResult &Result) {
   if (ReturnTypeCVRange.isInvalid())
     return;
 
-  // Check if unqualified names in the return type conflict with other entities
-  // after the rewrite.
+  ASTConsumer Consumer;
+  Sema Sema(*PP, const_cast<ASTContext&>(Ctx), Consumer);
+
+  DiagnosticsEngine Engine(nullptr, nullptr);
+  Scope Scope(nullptr, Scope::ClassScope, Engine);
+  Scope.setEntity(const_cast<DeclContext *>(F->getDeclContext()));
+
+  // Check if unqualified names in the return type conflict with other
+  // entities after the rewrite.
   // FIXME: this could be done better, by performing a lookup of all
-  // unqualified names in the return type in the scope of the function. If the
-  // lookup finds a different entity than the original entity identified by the
-  // name, then we can either not perform a rewrite or explicitly qualify the
-  // entity. Such entities could be function parameter names, (inherited) class
-  // members, template parameters, etc.
-  UnqualNameVisitor UNV{*F};
+  // unqualified names in the return type in the scope of the function. If
+  // the lookup finds a different entity than the original entity identified
+  // by the name, then we can either not perform a rewrite or explicitly
+  // qualify the entity. Such entities could be function parameter names,
+  // (inherited) class members, template parameters, etc.
+  UnqualNameVisitor UNV{*F, Sema, Scope};
   UNV.TraverseTypeLoc(FTL.getReturnLoc());
   if (UNV.Collision) {
     diag(F->getLocation(), Message);
