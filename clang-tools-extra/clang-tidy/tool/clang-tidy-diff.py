@@ -160,6 +160,10 @@ def main():
                       'command line.')
   parser.add_argument('-quiet', action='store_true', default=False,
                       help='Run clang-tidy in quiet mode')
+  parser.add_argument('-load', dest='load',
+                      action='append', default=[],
+                      help='Make clang-tidy load the specified plugin')
+
   clang_tidy_args = []
   argv = sys.argv[1:]
   if '--' in argv:
